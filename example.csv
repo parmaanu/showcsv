@@ -29,5 +29,3 @@ digits,letter,number
 27,|,147
 28,},148
 29,~,149
-PASS
-ok  	apps/showcsv	0.002s
