@@ -10,5 +10,5 @@ func Display(tableConfig *TableConfig) error {
 	if app == nil {
 		return errors.New("Error while creating tuiApp")
 	}
-	return app.render()
+	return app.run()
 }

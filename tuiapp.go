@@ -2,6 +2,9 @@ package showcsv
 
 import (
 	"errors"
+	"fmt"
+	"regexp"
+	"strings"
 
 	"github.com/gdamore/tcell/v2"
 	"github.com/rivo/tview"
@@ -35,6 +38,7 @@ func newTuiApp(tableConfig *TableConfig) *tuiApp {
 	app.TableView = newTableView(tableConfig)
 	app.StatusBar = newStatusBar(app.totalRowCnt, app.totalColCnt)
 	app.StatusBar.setRowCountText(app.totalRowCnt, app.currentRow, app.currentCol+1)
+	app.StatusBar.InputText.SetDoneFunc(app.userInput)
 
 	app.defaultStyle = tcell.Style{}.Attributes(tcell.AttrNone).Foreground(tcell.ColorWhite)
 	app.highlightStyle = tcell.Style{}.Attributes(tcell.AttrBold).Foreground(tcell.ColorWhite)
@@ -52,7 +56,7 @@ func newTuiApp(tableConfig *TableConfig) *tuiApp {
 	return app
 }
 
-func (app *tuiApp) render() error {
+func (app *tuiApp) run() error {
 	if app.MainApp == nil || app.TableView == nil || app.StatusBar.InputText == nil {
 		return errors.New("tuiApp not initialized properly")
 	}
@@ -63,6 +67,20 @@ func (app *tuiApp) render() error {
 	return app.MainApp.SetRoot(flex, true).EnableMouse(true).Run()
 }
 
+func (app *tuiApp) userInput(key tcell.Key) {
+	if key == tcell.KeyEnter {
+		cmd := app.StatusBar.InputText.GetLabel()
+		text := app.StatusBar.InputText.GetText()
+		switch cmd {
+		case "/", " ":
+			app.searchColForward(text)
+		}
+		app.StatusBar.InputText.SetText("")
+		app.StatusBar.setInputLabel("Input: ")
+		app.MainApp.SetFocus(app.TableView)
+	}
+}
+
 func (app *tuiApp) applicationInput(event *tcell.EventKey) *tcell.EventKey {
 	// TODO, don't set command when in command mode
 	// TODO, don't quit application on `q` when in command mode
@@ -70,13 +88,93 @@ func (app *tuiApp) applicationInput(event *tcell.EventKey) *tcell.EventKey {
 	switch event.Key() {
 	case tcell.KeyCtrlQ:
 		app.MainApp.Stop()
+	case tcell.KeyCtrlH:
+		// TODO, show help
+		// case tcell.
+	case tcell.KeyCtrlC:
+		// TODO, cancel all pending/remaining tasks or threads
+		app.StatusBar.setInputLabel("Input: ")
+		app.MainApp.SetFocus(app.TableView)
+		app.StatusBar.InputText.SetText("")
+		return nil
+	case tcell.KeyEsc:
+		app.StatusBar.setInputLabel("Input: ")
+		app.MainApp.SetFocus(app.TableView)
+		return nil
 	case tcell.KeyRune:
-		ch := event.Rune()
-		if ch == 'q' || ch == 'Q' {
+		switch ch := event.Rune(); ch {
+		case 'q', 'Q':
 			app.MainApp.Stop()
+		case 'n':
+			// TODO, go to next search item
+		case 'N':
+			// TODO, go to previous search item
+		case ' ':
+			ch = '/'
+			fallthrough
+		case '/', '?':
+			app.StatusBar.setInputLabel(string(ch))
+			app.MainApp.SetFocus(app.StatusBar.InputText)
+			return nil
+		case ':':
+			// TODO, split mode
+			app.StatusBar.setInputLabel("split-regex:")
+			app.MainApp.SetFocus(app.StatusBar.InputText)
+			return nil
+		case '|':
+			// TODO, select mode
+			app.StatusBar.setInputLabel("select-regex:")
+			app.MainApp.SetFocus(app.StatusBar.InputText)
+			return nil
+		case ',':
+			// TODO, select all matching pattern in current column
+		case '_':
+			// TODO, optimize column width
+		case '-':
+			// TODO, hide column
+		case 'K':
+			// TODO, move row up
+		case 'J':
+			// TODO, move row down
+		case 'H':
+			// TODO, move column left
+		case 'L':
+			// TODO, move column right
 		}
 	}
 	return event
+}
+
+func (app *tuiApp) searchColForward(searchText string) {
+	if len(searchText) == 0 {
+		return
+	}
+	searchFunc := func(s string) bool { return strings.Contains(s, strings.ToLower(searchText)) }
+	reg, err := regexp.Compile(searchText)
+	if err == nil {
+		searchFunc = func(s string) bool { return reg.MatchString(s) }
+	}
+
+	startRow, col := app.TableView.GetSelection()
+	for row := startRow; row < app.totalRowCnt; row++ {
+		cellText := app.TableView.GetCell(row, col).Text
+		if searchFunc(cellText) {
+			app.TableView.Select(row, col)
+			app.StatusBar.setMessageText(fmt.Sprintf("found '%s'", searchText))
+			return
+		}
+	}
+	for row := 0; row < startRow; row++ {
+		cellText := app.TableView.GetCell(row, col).Text
+		if searchFunc(cellText) {
+			app.TableView.Select(row, col)
+			app.StatusBar.setMessageText(fmt.Sprintf("found '%s'", searchText))
+			return
+		}
+	}
+}
+
+func (app *tuiApp) searchColBackward() {
 }
 
 func (app *tuiApp) tableSelectionChangedCallback(row, col int) {

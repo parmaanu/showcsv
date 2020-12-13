@@ -23,6 +23,7 @@ func newStatusBar(rowCnt, colCnt int) *statusBar {
 	sb.InputText = tview.NewInputField().
 		SetFieldBackgroundColor(tcell.ColorBlack)
 	sb.InputText.SetLabel("Input: ")
+	// TODO, sb.InputText.SetPlaceholder("text")
 
 	sb.MessageText = tview.NewTextView().SetScrollable(true).SetTextAlign(tview.AlignLeft)
 	sb.CommandText = tview.NewTextView().SetScrollable(true).SetTextAlign(tview.AlignRight)
@@ -56,6 +57,17 @@ func newStatusBar(rowCnt, colCnt int) *statusBar {
 
 func (sb *statusBar) getRoot() *tview.Flex {
 	return sb.Root
+}
+
+// func (sb *statusBar) getInputText(prompt string) string {
+//     sb.InputText.SetLabel(prompt)
+//     // sb.Root.SetTitle
+//     // sb.InputText.Box.Focus
+//     return ""
+// }
+
+func (sb *statusBar) setInputLabel(label string) {
+	sb.InputText.SetLabel(label)
 }
 
 func (sb *statusBar) setCommandText(str string) {
