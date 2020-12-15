@@ -25,7 +25,16 @@ type tuiApp struct {
 
 	inputMode          bool
 	previousSearchText string
+
+	// TODO, where and how to store this filename when showcsv will handle multiple csv files?
+	filename string
 }
+
+const (
+	gSplitRegexCmd  = "split-regex:"
+	gSelectRegexCmd = "select-regex:"
+	gSaveFileCmd    = "save-file:"
+)
 
 func newTuiApp(tableConfig *TableConfig) *tuiApp {
 	app := &tuiApp{}
@@ -37,6 +46,7 @@ func newTuiApp(tableConfig *TableConfig) *tuiApp {
 	if len(tableConfig.Data) > 0 {
 		app.totalColCnt = len(tableConfig.Data[0])
 	}
+	app.filename = tableConfig.Name
 
 	app.TableView = newTableView(tableConfig)
 	app.StatusBar = newStatusBar(app.totalRowCnt, app.totalColCnt)
@@ -78,12 +88,15 @@ func (app *tuiApp) userInputDoneFunc(cmd, text string) {
 	switch cmd {
 	case "/", " ":
 		app.searchColForward(text)
-	case "split-regex:":
+	case gSplitRegexCmd:
 		// TODO, split mode
-		app.StatusBar.setMessageText("split-regex is still not implemented")
-	case "select-regex:":
+		app.StatusBar.setMessageText(gSplitRegexCmd + " is still not implemented")
+	case gSelectRegexCmd:
 		// TODO, select mode
-		app.StatusBar.setMessageText("select-regex is still not implemented")
+		app.StatusBar.setMessageText(gSelectRegexCmd + " is still not implemented")
+	case gSaveFileCmd:
+		// TODO, select mode
+		app.StatusBar.setMessageText(gSaveFileCmd + " is still not implemented")
 	}
 	app.inputMode = false
 	app.MainApp.SetFocus(app.TableView)
@@ -98,6 +111,10 @@ func (app *tuiApp) applicationInput(event *tcell.EventKey) *tcell.EventKey {
 	// do following functions when app is not in input mode; ignore these when in input mode
 	if !app.inputMode {
 		switch event.Key() {
+		case tcell.KeyCtrlS:
+			// TODO, save
+			app.setInputMode(gSaveFileCmd)
+			app.StatusBar.InputText.SetText(app.filename)
 		case tcell.KeyRune:
 			switch ch := event.Rune(); ch {
 			case 'q', 'Q':
@@ -113,10 +130,10 @@ func (app *tuiApp) applicationInput(event *tcell.EventKey) *tcell.EventKey {
 				app.setInputMode(string(ch))
 				return nil
 			case ':':
-				app.setInputMode("split-regex:")
+				app.setInputMode(gSplitRegexCmd)
 				return nil
 			case '|':
-				app.setInputMode("select-regex:")
+				app.setInputMode(gSelectRegexCmd)
 				return nil
 			}
 		}
@@ -126,8 +143,6 @@ func (app *tuiApp) applicationInput(event *tcell.EventKey) *tcell.EventKey {
 	switch event.Key() {
 	case tcell.KeyCtrlQ:
 		app.MainApp.Stop()
-	case tcell.KeyCtrlS:
-		// TODO, save
 	case tcell.KeyCtrlH:
 		// TODO, show help
 	case tcell.KeyEsc:

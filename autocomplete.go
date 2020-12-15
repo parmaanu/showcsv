@@ -70,6 +70,7 @@ func (ac *autoCompleterType) addLine(line string) {
 func (ac *autoCompleterType) getFilteredLines(prefix string) []string {
 	// TODO, implement a filtering based on command type
 	// for example, up key on "/" should show history related to ["/", "?"] command history and similarly for "|" and ":"
+	// TODO, show current filename when or directories when tab is pressed and in gSaveFileCmd is active
 	if ac.ReturnAllLines {
 		if len(ac.uniqueLines) > gShowItemsCount {
 			return ac.uniqueLines[:gShowItemsCount]
@@ -81,6 +82,7 @@ func (ac *autoCompleterType) getFilteredLines(prefix string) []string {
 		return []string{}
 	}
 	entries := []string{}
+	// TODO, show latest entries from history file
 	for _, uniqueLine := range ac.uniqueLines {
 		if strings.HasPrefix(strings.ToLower(uniqueLine), strings.ToLower(prefix)) {
 			entries = append(entries, uniqueLine)
