@@ -15,7 +15,8 @@ type statusBar struct {
 	CommandText  *tview.TextView   // shows key pressed and commands
 	RowCountText *tview.TextView   // shows the number of rows in the sheet
 
-	Root *tview.Flex
+	Root          *tview.Flex
+	AutoCompleter *autoCompleterType
 }
 
 func newStatusBar(rowCnt, colCnt int) *statusBar {
@@ -23,11 +24,21 @@ func newStatusBar(rowCnt, colCnt int) *statusBar {
 	sb.InputText = tview.NewInputField().
 		SetFieldBackgroundColor(tcell.ColorBlack)
 	sb.InputText.SetLabel("Input: ")
+	sb.InputText.SetInputCapture(sb.inputTextKeyHandler)
 	// TODO, sb.InputText.SetPlaceholder("text")
 
 	sb.MessageText = tview.NewTextView().SetScrollable(true).SetTextAlign(tview.AlignLeft)
 	sb.CommandText = tview.NewTextView().SetScrollable(true).SetTextAlign(tview.AlignRight)
 	sb.RowCountText = tview.NewTextView().SetScrollable(true).SetTextAlign(tview.AlignRight)
+
+	sb.MessageText.SetDynamicColors(true)
+	sb.AutoCompleter = newAutoCompleter()
+
+	if sb.AutoCompleter == nil {
+		return nil
+	}
+	// defer ac.destroy()
+	sb.InputText.SetAutocompleteFunc(sb.AutoCompleter.getFilteredLines)
 
 	sb.CommandText.SetText("welcome")
 	rowCntWidth := len(fmt.Sprintf(" rows[%d,%d]%d", rowCnt, colCnt, rowCnt))
@@ -59,13 +70,6 @@ func (sb *statusBar) getRoot() *tview.Flex {
 	return sb.Root
 }
 
-// func (sb *statusBar) getInputText(prompt string) string {
-//     sb.InputText.SetLabel(prompt)
-//     // sb.Root.SetTitle
-//     // sb.InputText.Box.Focus
-//     return ""
-// }
-
 func (sb *statusBar) setInputLabel(label string) {
 	sb.InputText.SetLabel(label)
 }
@@ -81,3 +85,40 @@ func (sb *statusBar) setRowCountText(count, currentRow, currentCol int) {
 func (sb *statusBar) setMessageText(msg string) {
 	sb.MessageText.SetText(msg)
 }
+
+func (sb *statusBar) setInputDoneFunc(callback func(cmd, text string)) {
+	decorator := func(key tcell.Key) {
+		if key == tcell.KeyEnter {
+			cmd := sb.InputText.GetLabel()
+			text := sb.InputText.GetText()
+
+			sb.AutoCompleter.addLine(text)
+			callback(cmd, text)
+		}
+		callback("", "")
+		sb.InputText.SetText("")
+		sb.setInputLabel("Input: ")
+	}
+
+	// SetDoneFunc sets a handler which is called when the user is done entering text.
+	// The callback function is provided with the key that was pressed, which is one of the following:
+	// - KeyEnter: Done entering text.
+	// - KeyEscape: Abort text input.
+	// - KeyTab: Move to the next field.
+	// - KeyBacktab: Move to the previous field.
+	sb.InputText.SetDoneFunc(decorator)
+}
+
+func (sb *statusBar) inputTextKeyHandler(event *tcell.EventKey) *tcell.EventKey {
+	switch event.Key() {
+	case tcell.KeyUp:
+		sb.AutoCompleter.ReturnAllLines = true
+		sb.InputText.Autocomplete()
+		sb.AutoCompleter.ReturnAllLines = false
+		return nil
+	}
+	return event
+}
+
+// app.MainApp.SetInputCapture(app.applicationInput)
+// func (app *tuiApp) applicationInput(event *tcell.EventKey) *tcell.EventKey {
