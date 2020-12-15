@@ -51,8 +51,6 @@ func newStatusBar(rowCnt, colCnt int) *statusBar {
 		AddItem(sb.RowCountText, rowCntWidth, 1, false).
 		SetDirection(tview.FlexColumn)
 
-	// TODO, set autocomplete in InputText
-
 	// statusBar.SetBackgroundColor(tcell.ColorGray)
 	// SetRect()
 	// TODO, do SetBorder when highlighted. Do I need to use SetRect(x, y, width, height)
@@ -115,10 +113,6 @@ func (sb *statusBar) inputTextKeyHandler(event *tcell.EventKey) *tcell.EventKey 
 		sb.AutoCompleter.ReturnAllLines = true
 		sb.InputText.Autocomplete()
 		sb.AutoCompleter.ReturnAllLines = false
-		return nil
 	}
 	return event
 }
-
-// app.MainApp.SetInputCapture(app.applicationInput)
-// func (app *tuiApp) applicationInput(event *tcell.EventKey) *tcell.EventKey {

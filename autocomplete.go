@@ -68,13 +68,19 @@ func (ac *autoCompleterType) addLine(line string) {
 }
 
 func (ac *autoCompleterType) getFilteredLines(prefix string) []string {
+	// TODO, implement a filtering based on command type
+	// for example, up key on "/" should show history related to ["/", "?"] command history and similarly for "|" and ":"
+	if ac.ReturnAllLines {
+		if len(ac.uniqueLines) > gShowItemsCount {
+			return ac.uniqueLines[:gShowItemsCount]
+		}
+		return ac.uniqueLines
+	}
+
 	if len(prefix) == 0 {
 		return []string{}
 	}
 	entries := []string{}
-	if ac.ReturnAllLines {
-		return ac.uniqueLines[:gShowItemsCount]
-	}
 	for _, uniqueLine := range ac.uniqueLines {
 		if strings.HasPrefix(strings.ToLower(uniqueLine), strings.ToLower(prefix)) {
 			entries = append(entries, uniqueLine)
@@ -84,18 +90,4 @@ func (ac *autoCompleterType) getFilteredLines(prefix string) []string {
 		}
 	}
 	return entries
-
-	// return algoutils.Filter(ac.uniqueLines, func(uniqueLine string) bool {
-	//     return strings.HasPrefix(strings.ToLower(uniqueLine), strings.ToLower(prefix))
-	// })
 }
-
-// func (ac *autoCompleterType) addAndGetLines(line string) []string {
-//     ac.uniqueLines = ac.uniqueLines.AppendIfMissing(line)
-//     ac.historyFile.WriteString(line + "\n")
-//     return ac.uniqueLines
-// }
-
-// func (ac *autoCompleterType) destroy() {
-//     ac.historyFile.Close()
-// }

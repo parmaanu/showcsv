@@ -78,6 +78,12 @@ func (app *tuiApp) userInputDoneFunc(cmd, text string) {
 	switch cmd {
 	case "/", " ":
 		app.searchColForward(text)
+	case "split-regex:":
+		// TODO, split mode
+		app.StatusBar.setMessageText("split-regex is still not implemented")
+	case "select-regex:":
+		// TODO, select mode
+		app.StatusBar.setMessageText("select-regex is still not implemented")
 	}
 	app.inputMode = false
 	app.MainApp.SetFocus(app.TableView)
@@ -88,6 +94,35 @@ func (app *tuiApp) applicationInput(event *tcell.EventKey) *tcell.EventKey {
 	// TODO, don't quit application on `q` when in command mode
 	app.StatusBar.setCommandText(event.Name())
 	app.StatusBar.setMessageText("")
+
+	// do following functions when app is not in input mode; ignore these when in input mode
+	if !app.inputMode {
+		switch event.Key() {
+		case tcell.KeyRune:
+			switch ch := event.Rune(); ch {
+			case 'q', 'Q':
+				app.MainApp.Stop()
+				return nil
+			case 'n', 'N':
+				app.searchPreviousText(ch)
+				return nil
+			case ' ':
+				ch = '/'
+				fallthrough
+			case '/', '?':
+				app.setInputMode(string(ch))
+				return nil
+			case ':':
+				app.setInputMode("split-regex:")
+				return nil
+			case '|':
+				app.setInputMode("select-regex:")
+				return nil
+			}
+		}
+	}
+
+	// application based events
 	switch event.Key() {
 	case tcell.KeyCtrlQ:
 		app.MainApp.Stop()
@@ -95,61 +130,14 @@ func (app *tuiApp) applicationInput(event *tcell.EventKey) *tcell.EventKey {
 		// TODO, save
 	case tcell.KeyCtrlH:
 		// TODO, show help
-		// case tcell.
+	case tcell.KeyEsc:
+		fallthrough
 	case tcell.KeyCtrlC:
 		// TODO, cancel all pending/remaining tasks or threads
-		app.StatusBar.setInputLabel("Input: ")
-		app.MainApp.SetFocus(app.TableView)
-		app.StatusBar.InputText.SetText("")
-		app.inputMode = false
-		return nil
-	case tcell.KeyEsc:
-		app.StatusBar.setInputLabel("Input: ")
-		app.MainApp.SetFocus(app.TableView)
+		app.setDefaultMode()
 		return nil
 	case tcell.KeyRune:
 		switch ch := event.Rune(); ch {
-		case 'q', 'Q':
-			if !app.inputMode {
-				app.MainApp.Stop()
-			}
-		case 'n', 'N':
-			// TODO, go to next search item
-			if len(app.previousSearchText) > 0 {
-				if ch == 'n' {
-					app.searchColForward(app.previousSearchText)
-				} else if ch == 'N' {
-					app.searchColBackward(app.previousSearchText)
-				}
-			} else {
-				app.StatusBar.setMessageText(fmt.Sprintf("no previous search pattern!"))
-			}
-		case ' ':
-			ch = '/'
-			fallthrough
-		case '/', '?':
-			if !app.inputMode {
-				app.inputMode = true
-				app.StatusBar.setInputLabel(string(ch))
-				app.MainApp.SetFocus(app.StatusBar.InputText)
-				// return nil
-			}
-		case ':':
-			// TODO, split mode
-			if !app.inputMode {
-				app.inputMode = true
-				app.StatusBar.setInputLabel("split-regex:")
-				app.MainApp.SetFocus(app.StatusBar.InputText)
-				return nil
-			}
-		case '|':
-			// TODO, select mode
-			if !app.inputMode {
-				app.inputMode = true
-				app.StatusBar.setInputLabel("select-regex:")
-				app.MainApp.SetFocus(app.StatusBar.InputText)
-				return nil
-			}
 		case ',':
 			// TODO, select all matching pattern in current column
 		case '_':
@@ -169,6 +157,31 @@ func (app *tuiApp) applicationInput(event *tcell.EventKey) *tcell.EventKey {
 	return event
 }
 
+func (app *tuiApp) setDefaultMode() {
+	app.StatusBar.setInputLabel("Input: ")
+	app.MainApp.SetFocus(app.TableView)
+	app.StatusBar.InputText.SetText("")
+	app.inputMode = false
+}
+
+func (app *tuiApp) setInputMode(inputLabel string) {
+	app.inputMode = true
+	app.StatusBar.setInputLabel(inputLabel)
+	app.MainApp.SetFocus(app.StatusBar.InputText)
+}
+
+func (app *tuiApp) searchPreviousText(cmd rune) {
+	if len(app.previousSearchText) > 0 {
+		if cmd == 'n' {
+			app.searchColForward(app.previousSearchText)
+		} else if cmd == 'N' {
+			app.searchColBackward(app.previousSearchText)
+		}
+	} else {
+		app.StatusBar.setMessageText(fmt.Sprintf("no previous search pattern!"))
+	}
+}
+
 func (app *tuiApp) searchColForward(searchText string) {
 	if len(searchText) == 0 {
 		return
@@ -181,7 +194,7 @@ func (app *tuiApp) searchColForward(searchText string) {
 	}
 
 	startRow, col := app.TableView.GetSelection()
-	for row := startRow; row < app.totalRowCnt; row++ {
+	for row := startRow + 1; row < app.totalRowCnt; row++ {
 		cellText := app.TableView.GetCell(row, col).Text
 		if searchFunc(cellText) {
 			app.TableView.Select(row, col)
@@ -189,7 +202,7 @@ func (app *tuiApp) searchColForward(searchText string) {
 			return
 		}
 	}
-	for row := 1; row < startRow; row++ {
+	for row := 1; row <= startRow; row++ {
 		cellText := app.TableView.GetCell(row, col).Text
 		if searchFunc(cellText) {
 			app.TableView.Select(row, col)
@@ -212,7 +225,7 @@ func (app *tuiApp) searchColBackward(searchText string) {
 	}
 
 	startRow, col := app.TableView.GetSelection()
-	for row := startRow; row > 0; row-- {
+	for row := startRow - 1; row > 0; row-- {
 		cellText := app.TableView.GetCell(row, col).Text
 		if searchFunc(cellText) {
 			app.TableView.Select(row, col)
@@ -220,7 +233,7 @@ func (app *tuiApp) searchColBackward(searchText string) {
 			return
 		}
 	}
-	for row := app.totalRowCnt; row > startRow; row-- {
+	for row := app.totalRowCnt; row >= startRow; row-- {
 		cellText := app.TableView.GetCell(row, col).Text
 		if searchFunc(cellText) {
 			app.TableView.Select(row, col)
