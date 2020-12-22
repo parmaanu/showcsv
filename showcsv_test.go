@@ -11,6 +11,8 @@ import (
 var renderTui = false
 
 func init() {
+	// Note, set `export SHOWCSV_RENDER_TUI=true` in your terminal enviroment to render tui.
+	// To make it persistent, you can save above line in your ~/.bashrc
 	_, renderTui = os.LookupEnv("SHOWCSV_RENDER_TUI")
 }
 
@@ -27,7 +29,7 @@ func TestShowcsv(t *testing.T) {
 			strconv.FormatInt(i+120, 10),
 		})
 	}
-	tableConfig := &showcsv.TableConfig{"example.csv", header, csvData}
+	tableConfig := &showcsv.TableConfig{"test.csv", header, csvData}
 	if err := showcsv.Display(tableConfig); err != nil {
 		panic(err)
 	}

@@ -1,13 +1,17 @@
 package showcsv
 
 import (
+	"encoding/csv"
 	"errors"
 	"fmt"
+	"os"
 	"regexp"
 	"strings"
 
 	"github.com/gdamore/tcell/v2"
+	"github.com/parmaanu/goutils/fileutils"
 	"github.com/rivo/tview"
+	tilde "gopkg.in/mattes/go-expand-tilde.v1"
 )
 
 type tuiApp struct {
@@ -15,6 +19,7 @@ type tuiApp struct {
 	TableView *tview.Table
 	StatusBar *statusBar
 
+	// TODO, don't store total row and col counts as they will change while adding and removing rows and columns
 	totalRowCnt int
 	totalColCnt int
 	currentRow  int
@@ -27,13 +32,15 @@ type tuiApp struct {
 	previousSearchText string
 
 	// TODO, where and how to store this filename when showcsv will handle multiple csv files?
-	filename string
+	filename      string
+	inputFilename string
 }
 
 const (
-	gSplitRegexCmd  = "split-regex:"
-	gSelectRegexCmd = "select-regex:"
-	gSaveFileCmd    = "save-file:"
+	gSplitRegexCmd   = "split-regex:"
+	gSelectRegexCmd  = "select-regex:"
+	gSaveFileCmd     = "save-file:"
+	gOverrideFileCmd = "override-file (y/N):"
 )
 
 func newTuiApp(tableConfig *TableConfig) *tuiApp {
@@ -54,7 +61,6 @@ func newTuiApp(tableConfig *TableConfig) *tuiApp {
 		return nil
 	}
 	app.StatusBar.setRowCountText(app.totalRowCnt, app.currentRow, app.currentCol+1)
-	// app.StatusBar.InputText.SetDoneFunc(app.userInputDoneFunc)
 	app.StatusBar.setInputDoneFunc(app.userInputDoneFunc)
 
 	app.defaultStyle = tcell.Style{}.Attributes(tcell.AttrNone).Foreground(tcell.ColorWhite)
@@ -84,7 +90,7 @@ func (app *tuiApp) run() error {
 	return app.MainApp.SetRoot(flex, true).EnableMouse(true).Run()
 }
 
-func (app *tuiApp) userInputDoneFunc(cmd, text string) {
+func (app *tuiApp) userInputDoneFunc(cmd, text string) bool {
 	switch cmd {
 	case "/", " ":
 		app.searchColForward(text)
@@ -95,21 +101,28 @@ func (app *tuiApp) userInputDoneFunc(cmd, text string) {
 		// TODO, select mode
 		app.StatusBar.setMessageText(gSelectRegexCmd + " is still not implemented")
 	case gSaveFileCmd:
-		// TODO, select mode
-		app.StatusBar.setMessageText(gSaveFileCmd + " is still not implemented")
+		if !app.saveFile(text) {
+			return false
+		}
+	case gOverrideFileCmd:
+		ans := strings.ToLower(strings.TrimSpace(text))
+		if ans == "y" || ans == "yes" {
+			app.writeFile(app.inputFilename)
+		}
 	}
 	app.inputMode = false
 	app.MainApp.SetFocus(app.TableView)
+	return true
 }
 
 func (app *tuiApp) applicationInput(event *tcell.EventKey) *tcell.EventKey {
 	// TODO, don't set command when in command mode
 	// TODO, don't quit application on `q` when in command mode
 	app.StatusBar.setCommandText(event.Name())
-	app.StatusBar.setMessageText("")
 
 	// do following functions when app is not in input mode; ignore these when in input mode
 	if !app.inputMode {
+		app.StatusBar.setMessageText("")
 		switch event.Key() {
 		case tcell.KeyCtrlS:
 			// TODO, save
@@ -172,6 +185,42 @@ func (app *tuiApp) applicationInput(event *tcell.EventKey) *tcell.EventKey {
 	return event
 }
 
+func (app *tuiApp) saveFile(fname string) bool {
+	absfname, _ := tilde.Expand(fname)
+	if fileutils.FileExist(absfname) {
+		app.StatusBar.setMessageText("[red::br]" + fname)
+		app.setInputMode(gOverrideFileCmd)
+		app.StatusBar.InputText.SetText("")
+		app.inputFilename = absfname
+		return false
+	}
+	app.writeFile(fname)
+	return true
+}
+
+func (app *tuiApp) writeFile(fname string) {
+	if len(fname) > 0 {
+		oFile, err := os.Create(fname)
+		if err != nil {
+			app.StatusBar.setMessageText(fmt.Sprintf("[red::br]Error: %v while writing %s!", err, fname))
+			return
+		}
+		defer oFile.Close()
+
+		writer := csv.NewWriter(oFile)
+		defer writer.Flush()
+
+		for r := 0; r < app.TableView.GetRowCount(); r++ {
+			record := []string{}
+			for c := 0; c < app.TableView.GetColumnCount(); c++ {
+				record = append(record, app.TableView.GetCell(r, c).Text)
+			}
+			writer.Write(record)
+		}
+		app.StatusBar.setMessageText(fmt.Sprintf("[::br]Wrote %s!", fname))
+	}
+}
+
 func (app *tuiApp) setDefaultMode() {
 	app.StatusBar.setInputLabel("Input: ")
 	app.MainApp.SetFocus(app.TableView)
@@ -193,7 +242,7 @@ func (app *tuiApp) searchPreviousText(cmd rune) {
 			app.searchColBackward(app.previousSearchText)
 		}
 	} else {
-		app.StatusBar.setMessageText(fmt.Sprintf("no previous search pattern!"))
+		app.StatusBar.setMessageText("no previous search pattern!")
 	}
 }
 
@@ -225,7 +274,7 @@ func (app *tuiApp) searchColForward(searchText string) {
 			return
 		}
 	}
-	app.StatusBar.setMessageText(fmt.Sprintf("not found [red]/%s/", searchText))
+	app.StatusBar.setMessageText(fmt.Sprintf("not found [red::b]/%s/", searchText))
 }
 
 func (app *tuiApp) searchColBackward(searchText string) {
@@ -256,7 +305,7 @@ func (app *tuiApp) searchColBackward(searchText string) {
 			return
 		}
 	}
-	app.StatusBar.setMessageText(fmt.Sprintf("not found [red]/%s/", searchText))
+	app.StatusBar.setMessageText(fmt.Sprintf("not found [red::b]/%s/", searchText))
 }
 
 func (app *tuiApp) tableSelectionChangedCallback(row, col int) {

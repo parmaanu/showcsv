@@ -76,24 +76,29 @@ func (sb *statusBar) setCommandText(str string) {
 	sb.CommandText.SetText("(" + str + ")")
 }
 
-func (sb *statusBar) setRowCountText(count, currentRow, currentCol int) {
-	sb.RowCountText.SetText(fmt.Sprintf("rows[%d,%d]%d", currentRow, currentCol, count))
-}
-
 func (sb *statusBar) setMessageText(msg string) {
 	sb.MessageText.SetText(msg)
 }
 
-func (sb *statusBar) setInputDoneFunc(callback func(cmd, text string)) {
+func (sb *statusBar) setRowCountText(count, currentRow, currentCol int) {
+	sb.RowCountText.SetText(fmt.Sprintf("rows[%d,%d]%d", currentRow, currentCol, count))
+}
+
+func (sb *statusBar) setInputDoneFunc(callback func(cmd, text string) bool) {
 	decorator := func(key tcell.Key) {
 		if key == tcell.KeyEnter {
 			cmd := sb.InputText.GetLabel()
 			text := sb.InputText.GetText()
 
 			sb.AutoCompleter.addLine(text)
-			callback(cmd, text)
+			inputDone := callback(cmd, text)
+			if !inputDone {
+				return
+			}
+			// } else {
+			//     // TODO, what's the use of this?
+			//     callback("", "")
 		}
-		callback("", "")
 		sb.InputText.SetText("")
 		sb.setInputLabel("Input: ")
 	}
