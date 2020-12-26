@@ -72,7 +72,6 @@ func (ac *autoCompleterType) addLine(line string) {
 			}
 		}
 		ac.uniqueLines = append(ac.uniqueLines, line)
-		// TODO, check that ~/.showcsv.cmd.history file does not have repetition
 		ac.historyFile.WriteString(line + "\n")
 	}
 }

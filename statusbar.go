@@ -9,6 +9,7 @@ import (
 
 // TODO, show `filename | ctrl-H opens help`` in status bar initially on the start
 // TODO, then show filename | message									button pressed button-function		rows
+
 type statusBar struct {
 	InputText    *tview.InputField // TODO, Can InputText and MessageText be merged - only one of them would be used at a time?
 	MessageText  *tview.TextView   // shows error messages, alerts etc to user
@@ -25,7 +26,6 @@ func newStatusBar(rowCnt, colCnt int) *statusBar {
 		SetFieldBackgroundColor(tcell.ColorBlack)
 	sb.InputText.SetLabel("Input: ")
 	sb.InputText.SetInputCapture(sb.inputTextKeyHandler)
-	// TODO, sb.InputText.SetPlaceholder("text")
 
 	sb.MessageText = tview.NewTextView().SetScrollable(true).SetTextAlign(tview.AlignLeft)
 	sb.CommandText = tview.NewTextView().SetScrollable(true).SetTextAlign(tview.AlignRight)
@@ -43,24 +43,12 @@ func newStatusBar(rowCnt, colCnt int) *statusBar {
 	sb.CommandText.SetText("welcome")
 	rowCntWidth := len(fmt.Sprintf(" rows[%d,%d]%d", rowCnt, colCnt, rowCnt))
 
-	// TODO, tweak the sizes (fixed of flexible) of right 3 text boxes
 	sb.Root = tview.NewFlex().
 		AddItem(sb.InputText, 0, 4, false).
 		AddItem(sb.MessageText, 0, 2, false).
 		AddItem(sb.CommandText, 10, 1, false).
 		AddItem(sb.RowCountText, rowCntWidth, 1, false).
 		SetDirection(tview.FlexColumn)
-
-	// statusBar.SetBackgroundColor(tcell.ColorGray)
-	// SetRect()
-	// TODO, do SetBorder when highlighted. Do I need to use SetRect(x, y, width, height)
-
-	// app.StatusBar.SetDoneFunc(func(key tcell.Key) {
-	//     // statusBar..
-	//     text := app.StatusBar.GetText()
-	//     text = strings.TrimLeft(text, "Input: ")
-	//     app.StatusBar.SetText("Input: " + text)
-	// })
 	return sb
 }
 
@@ -95,9 +83,6 @@ func (sb *statusBar) setInputDoneFunc(callback func(cmd, text string) bool) {
 			if !inputDone {
 				return
 			}
-			// } else {
-			//     // TODO, what's the use of this?
-			//     callback("", "")
 		}
 		sb.InputText.SetText("")
 		sb.setInputLabel("Input: ")

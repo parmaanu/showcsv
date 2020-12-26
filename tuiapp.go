@@ -116,8 +116,6 @@ func (app *tuiApp) userInputDoneFunc(cmd, text string) bool {
 }
 
 func (app *tuiApp) applicationInput(event *tcell.EventKey) *tcell.EventKey {
-	// TODO, don't set command when in command mode
-	// TODO, don't quit application on `q` when in command mode
 	app.StatusBar.setCommandText(event.Name())
 
 	// do following functions when app is not in input mode; ignore these when in input mode
@@ -125,7 +123,6 @@ func (app *tuiApp) applicationInput(event *tcell.EventKey) *tcell.EventKey {
 		app.StatusBar.setMessageText("")
 		switch event.Key() {
 		case tcell.KeyCtrlS:
-			// TODO, save
 			app.setInputMode(gSaveFileCmd)
 			app.StatusBar.InputText.SetText(app.filename)
 		case tcell.KeyRune:

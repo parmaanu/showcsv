@@ -7,10 +7,11 @@ import (
 
 // TODO, tableview should allow inserting a row and a column
 // TODO, editable cells
+// TODO, Add a functionality to add numeric column - InsertColumn(0) and tablecell.SetSelectable(false)
 
 // TableConfig for tuitable
 type TableConfig struct {
-	// TODO, fix the header - cursor should not go to first header? or it can be used to edit column names
+	// TODO, make header editable to change the column name
 	Name   string
 	Header []string
 	Data   [][]string
@@ -22,11 +23,7 @@ func newTableView(tableConfig *TableConfig) *tview.Table {
 
 	table.Select(0, 0).
 		SetSelectable(true, true)
-		// TODO, fix any one column separator or no separator
-		// SetSeparator('|').
-		// SetSeparator(tview.Borders.Vertical)
 
-	// TODO, Add a functionality to add numeric column - InsertColumn(0) and tablecell.SetSelectable(false)
 	// add header
 	tableRowidx := 0
 	if len(tableConfig.Header) > 0 {
@@ -52,12 +49,6 @@ func newTableView(tableConfig *TableConfig) *tview.Table {
 		}
 		tableRowidx++
 	}
-
-	// TODO, highlight background white of column whenever that column is selected
-	// TODO, make selected column bold
-	// TODO, type / should highlight statusBar
-	// TODO, show `filename | ctrl-H opens help`` in status bar initially on the start
-	// TODO, then show filename | message									button pressed button-function		rows
 
 	return table
 }
