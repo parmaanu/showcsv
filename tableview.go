@@ -22,7 +22,8 @@ func newTableView(tableConfig *TableConfig) *tview.Table {
 		SetFixed(1, 0)
 
 	table.Select(0, 0).
-		SetSelectable(true, true)
+		SetSelectable(true, true).
+		SetSeparator(tview.Borders.Vertical)
 
 	// add header
 	tableRowidx := 0
